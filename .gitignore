@@ -1,0 +1,17 @@
+# Virtual environment
+.venv/
+
+# App output
+report.*
+*.md.bak
+
+# Secrets
+.env
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
+Thumbs.db
