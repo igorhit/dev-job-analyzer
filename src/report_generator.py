@@ -17,9 +17,12 @@ from .models import AnalysisReport, GitHubProfile, JobListing, TechMatch
 def compute_tech_matches(jobs: list[JobListing], profile: Optional[GitHubProfile]) -> tuple[list[TechMatch], float]:
     """Cross-reference job technologies against GitHub profile languages."""
     tech_counter: Counter[str] = Counter()
+    canonical: dict[str, str] = {}
     for job in jobs:
         for tech in job.technologies:
-            tech_counter[tech.lower()] += 1
+            lower = tech.lower()
+            tech_counter[lower] += 1
+            canonical[lower] = tech
 
     if not tech_counter:
         return [], 0.0
@@ -32,7 +35,7 @@ def compute_tech_matches(jobs: list[JobListing], profile: Optional[GitHubProfile
     for tech, count in tech_counter.most_common():
         in_profile = tech in profile_langs
         matches.append(TechMatch(
-            technology=tech.title(),
+            technology=canonical[tech],
             job_count=count,
             in_github_profile=in_profile,
             github_usage_bytes=profile_langs.get(tech, 0),
@@ -163,7 +166,7 @@ def to_markdown(report: AnalysisReport) -> str:
 
         ---
 
-        *Relatório gerado por [Dev Job Analyzer](https://github.com)*
+        *Relatório gerado por [Dev Job Analyzer](https://github.com/igorhit/dev-job-analyzer)*
     """)
 
 
@@ -318,7 +321,7 @@ def to_html(report: AnalysisReport) -> str:
   <h2>🎯 Match: Vagas × Seu Perfil</h2>
   {_html_match(report.tech_matches, report.match_score)}
 
-  <footer>Gerado por Dev Job Analyzer · <a href="https://github.com" style="color:inherit">github.com</a></footer>
+  <footer>Gerado por Dev Job Analyzer · <a href="https://github.com/igorhit/dev-job-analyzer" style="color:inherit">github.com/igorhit/dev-job-analyzer</a></footer>
 </body>
 </html>"""
 

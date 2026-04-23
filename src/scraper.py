@@ -35,7 +35,7 @@ _TECH_RE = re.compile(
     r"\b(" + "|".join(TECH_PATTERNS) + r")\b",
     re.IGNORECASE,
 )
-_CANONICAL = {p.lower().replace("\\.", "."): p for p in TECH_PATTERNS}
+_CANONICAL = {p.lower().replace("\\.", "."): p.replace("\\.", ".") for p in TECH_PATTERNS}
 
 
 def _extract_technologies(text: str) -> list[str]:
@@ -171,7 +171,7 @@ def fetch_trampos(
                 on_progress(f"trampos.co: {len(listings)} encontradas / {checked} verificadas...")
             try:
                 detail = _trampos_detail(session, job_id)
-                time.sleep(0.3)
+                time.sleep(0.1)
             except Exception:
                 detail = {}
 

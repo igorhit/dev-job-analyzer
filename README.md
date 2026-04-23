@@ -1,14 +1,22 @@
 # Dev Job Analyzer
 
-Um CLI Python que combina **scraping de vagas dev** em múltiplos sites brasileiros com **análise de perfil GitHub** para gerar um relatório consolidado de match entre o que o mercado pede e o que você já sabe.
+![Python](https://img.shields.io/badge/python-3.10+-3776ab?logo=python&logoColor=white)
+![License](https://img.shields.io/badge/licença-MIT-22c55e)
+![Tipo](https://img.shields.io/badge/projeto-portfólio-38bdf8)
 
-Construído como projeto de portfólio para demonstrar automação de dados, consumo de APIs REST, scraping HTML e geração de relatórios em Python.
+Procurar emprego como dev é repetitivo: você abre trampos, programathor e gupy, filtra manualmente as vagas, copia os requisitos e tenta lembrar o que já sabe e o que ainda precisa aprender. Este projeto automatiza exatamente isso — uma CLI que busca vagas em 3 fontes em paralelo, analisa seu perfil GitHub e gera um relatório de compatibilidade em HTML e Markdown.
+
+---
+
+## Preview
+
+> Execute o projeto e adicione prints do terminal e do relatório HTML aqui. O relatório gerado tem dark mode, barras de progresso por linguagem e cards de vagas — vale um print.
 
 ---
 
 ## O que o projeto faz
 
-1. **Busca vagas** em 3 fontes simultaneamente:
+1. **Busca vagas** em 3 fontes simultaneamente (paralelo via `ThreadPoolExecutor`):
    - **[trampos.co](https://trampos.co)** — via endpoint JSON interno `/api/v2/opportunities` (sem auth)
    - **[programathor.com.br](https://programathor.com.br)** — via scraping HTML com BeautifulSoup (skills já estruturadas como tags)
    - **[gupy.io](https://gupy.io)** — via API REST pública `portal.api.gupy.io/api/v1/jobs` (sem auth)
@@ -22,7 +30,7 @@ Construído como projeto de portfólio para demonstrar automação de dados, con
 ## Exemplo de uso
 
 ```bash
-python main.py --jobs "python junior" --github igorhit --output report
+python main.py --jobs "python junior" --github igorhit --output ./report
 ```
 
 ### Output no terminal
@@ -33,16 +41,19 @@ python main.py --jobs "python junior" --github igorhit --output report
 ╚══════════════════════════════╝
 
 → Buscando vagas: "python junior" em [trampos, programathor, gupy]...
-  ✓ trampos: 12 vagas
-  ✓ programathor: 8 vagas
-  ✓ gupy: 5 vagas
+  • trampos: buscando...
+  • programathor: buscando...
+  • gupy: buscando...
+  ✓ gupy: 5 vagas encontradas
+  ✓ programathor: 8 vagas encontradas
+  ✓ trampos: 12 vagas encontradas
 
 → Analisando perfil GitHub: @igorhit...
   ✓ Perfil carregado — 24 repos, 6 linguagens
 
 → Gerando relatório...
-  ✓ Markdown: /path/to/report.md
-  ✓ HTML:     /path/to/report.html
+  ✓ Markdown: report.md
+  ✓ HTML:     report.html
 
 ────────────────────────────────────────────
   Vagas encontradas : 25
@@ -100,7 +111,7 @@ Abra report.html no navegador para ver o relatório completo.
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/seu-usuario/dev-job-analyzer.git
+git clone https://github.com/igorhit/dev-job-analyzer.git
 cd dev-job-analyzer
 
 # 2. (Opcional) Crie um ambiente virtual
@@ -155,10 +166,13 @@ dev-job-analyzer/
 ├── .env.example             # Variáveis de ambiente (token GitHub)
 ├── requirements.txt         # Dependências fixadas
 ├── README.md
+├── tests/
+│   ├── test_tech_extraction.py  # Testes unitários para extração de tecnologias
+│   └── test_report.py           # Testes unitários para cálculo de match score
 └── src/
     ├── __init__.py
     ├── models.py            # Dataclasses: JobListing, GitHubProfile, etc.
-    ├── scraper.py           # Scraper trampos.co via /api/v2/
+    ├── scraper.py           # Scrapers trampos.co, programathor e gupy
     ├── github_client.py     # GitHub REST API client
     └── report_generator.py  # Geração de .md e .html
 ```
@@ -172,6 +186,7 @@ Cada módulo tem uma única responsabilidade. `main.py` apenas orquestra — nã
 | Tecnologia | Por que foi escolhida |
 | --- | --- |
 | **Python 3.10+** | Type hints com `list[str]` e `dict[str, int]` sem `from __future__` |
+| **ThreadPoolExecutor** | Scraping paralelo das 3 fontes — reduz o tempo de busca em ~3x |
 | **requests** | HTTP simples e confiável; trampos e gupy retornam JSON puro sem JS |
 | **BeautifulSoup + lxml** | programathor.com.br renderiza server-side; lxml é o parser mais rápido |
 | **python-dotenv** | Padrão de mercado para separar segredos do código |
@@ -192,6 +207,8 @@ Cada módulo tem uma única responsabilidade. `main.py` apenas orquestra — nã
 | Usuário GitHub inexistente | Aviso no stderr, relatório gerado sem seção GitHub |
 | Rate limit GitHub (60 req/h) | Aviso + instrução para adicionar `GITHUB_TOKEN` no `.env` |
 | Token GitHub inválido | `PermissionError` com mensagem específica |
+
+> **Nota:** a trampos.co pode demorar mais que as outras fontes. Ao contrário de gupy e programathor (que retornam listas paginadas), a trampos exige uma requisição individual por vaga para obter os detalhes completos. Para queries com pouco resultado, o scraper pode verificar centenas de vagas antes de terminar — o terminal pode parecer parado, mas o processo está rodando normalmente.
 
 ---
 

@@ -8,6 +8,7 @@ Uso:
 
 import argparse
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from dotenv import load_dotenv
 
@@ -100,28 +101,29 @@ def main() -> None:
 
     sources_label = ", ".join(args.sources)
 
-    # ── 1. Scrape jobs ────────────────────────────────────────────────────────
+    # ── 1. Scrape jobs (paralelo) ─────────────────────────────────────────────
     _step(f'Buscando vagas: "{args.jobs}" em [{sources_label}]...')
-    jobs = []
-    for source in args.sources:
-        print(f"  • {source}: iniciando...", end="", flush=True)
 
-        def _progress(msg: str, _src: str = source) -> None:
-            print(f"\r  • {msg:<60}", end="", flush=True)
-
+    def _fetch(source: str) -> tuple[str, list, Exception | None]:
         try:
-            results = SOURCES[source](args.jobs, args.max_jobs, on_progress=_progress)
-            print(f"\r  ✓ {source}: {len(results)} vagas encontradas{'':<40}")
-            jobs.extend(results)
-        except (ConnectionError, TimeoutError) as e:
-            print()
-            _warn(f"{source}: {e}")
-        except PermissionError as e:
-            print()
-            _warn(f"{source}: {e}")
+            return source, SOURCES[source](args.jobs, args.max_jobs), None
         except Exception as e:
-            print()
-            _warn(f"{source}: erro inesperado — {e}")
+            return source, [], e
+
+    jobs = []
+    with ThreadPoolExecutor(max_workers=len(args.sources)) as executor:
+        futures = {}
+        for src in args.sources:
+            print(f"  • {src}: buscando...", flush=True)
+            futures[executor.submit(_fetch, src)] = src
+
+        for future in as_completed(futures):
+            source, results, error = future.result()
+            if error:
+                _warn(f"{source}: {error}")
+            else:
+                print(f"  ✓ {source}: {len(results)} vagas encontradas", flush=True)
+            jobs.extend(results)
 
     if not jobs:
         _warn("Nenhuma vaga encontrada em nenhuma fonte. Tente uma busca mais abrangente.")
@@ -152,8 +154,8 @@ def main() -> None:
     # ── 4. Save files ──────────────────────────────────────────────────────────
     try:
         md_path, html_path = save_reports(report, args.output)
-        _ok(f"Markdown: {md_path.resolve()}")
-        _ok(f"HTML:     {html_path.resolve()}")
+        _ok(f"Markdown: {md_path}")
+        _ok(f"HTML:     {html_path}")
     except OSError as e:
         _fail(f"Erro ao salvar relatório: {e}")
         sys.exit(1)
